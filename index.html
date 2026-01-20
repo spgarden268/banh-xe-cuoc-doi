@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bánh Xe Cuộc Đời - My Progress</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #e74c3c;
+            --bg: #f0f2f5;
+        }
+        body { font-family: 'Segoe UI', Roboto, sans-serif; background-color: var(--bg); display: flex; flex-direction: column; align-items: center; padding: 20px; color: var(--primary); }
+        .app-card { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); display: flex; flex-wrap: wrap; gap: 40px; justify-content: center; max-width: 1000px; }
+        .input-grid { display: grid; grid-template-columns: 1fr; gap: 10px; width: 320px; }
+        .input-group { display: flex; justify-content: space-between; align-items: center; background: #f8f9fa; padding: 8px 15px; border-radius: 10px; border: 1px solid #eee; }
+        .input-group label { font-size: 0.95rem; font-weight: 500; }
+        input[type="number"] { width: 60px; padding: 6px; border: 2px solid #ddd; border-radius: 8px; text-align: center; font-weight: bold; color: #2ecc71; }
+        input[type="number"]:focus { border-color: #2ecc71; outline: none; }
+        .canvas-container { position: relative; }
+        canvas { background: #fff; border-radius: 15px; }
+        .controls { width: 100%; display: flex; gap: 10px; margin-top: 20px; }
+        .btn { flex: 1; padding: 12px; border: none; border-radius: 10px; cursor: pointer; font-weight: 600; transition: 0.3s; }
+        .btn-save { background: #2ecc71; color: white; }
+        .btn-reset { background: #95a5a6; color: white; }
+        .btn:hover { opacity: 0.9; transform: translateY(-2px); }
+        h1 { margin-bottom: 5px; }
+        p.subtitle { margin-bottom: 25px; color: #7f8c8d; }
+    </style>
+</head>
+<body>
+
+    <h1>BÁNH XE CUỘC ĐỜI</h1>
+    <p class="subtitle">Dữ liệu được tự động lưu trên trình duyệt của bạn</p>
+
+    <div class="app-card">
+        <div style="min-width:320px;">
+            <div style="display:flex; gap:10px; align-items:center; margin-bottom:12px;">
+                <label style="font-weight:600;">Ngày:</label>
+                <input type="date" id="dateInput" style="padding:8px; border-radius:8px; border:1px solid #ddd;">
+            </div>
+
+            <div class="input-grid" id="inputContainer"></div>
+
+            <div class="controls" style="margin-top:14px;">
+                <button class="btn btn-save" onclick="downloadCanvas('current')">Xuất Hiện Tại (.PNG)</button>
+                <button class="btn btn-save" style="background:#3498db" onclick="downloadCanvas('future')">Xuất Kỳ Vọng (.PNG)</button>
+                <button class="btn btn-reset" onclick="resetData()">Đặt Lại Từ Đầu</button>
+            </div>
+        </div>
+
+        <div class="canvas-container" style="display:flex; gap:20px; align-items:flex-start;">
+            <div style="text-align:center;">
+                <h3 style="margin:6px 0 8px 0;">Hiện Tại</h3>
+                <canvas id="wheelCanvasCurrent" width="420" height="420"></canvas>
+            </div>
+            <div style="text-align:center;">
+                <h3 style="margin:6px 0 8px 0;">Kỳ Vọng</h3>
+                <canvas id="wheelCanvasFuture" width="420" height="420"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const categories = [
+            { name: "Tài chính", color: "#e74c3c" },
+            { name: "Quan hệ", color: "#e67e22" },
+            { name: "Sự nghiệp", color: "#f1c40f" },
+            { name: "Gia đình & Xã hội", color: "#2ecc71" },
+            { name: "Sức khỏe", color: "#3498db" },
+            { name: "Tâm hồn", color: "#9b59b6" },
+            { name: "Phát triển bản thân", color: "#1abc9c" },
+            { name: "Giải trí", color: "#34495e" }
+        ];
+        // Khởi tạo/Tải dữ liệu từ LocalStorage cho Hiện Tại và Kỳ Vọng
+        const inputContainer = document.getElementById('inputContainer');
+        const canvasCurrent = document.getElementById('wheelCanvasCurrent');
+        const canvasFuture = document.getElementById('wheelCanvasFuture');
+
+        let currentScores = JSON.parse(localStorage.getItem('wheelCurrent')) || [5,5,5,5,5,5,5,5];
+        let futureScores = JSON.parse(localStorage.getItem('wheelFuture')) || [5,5,5,5,5,5,5,5];
+        const savedDate = localStorage.getItem('wheelDate');
+        const dateInput = document.getElementById('dateInput');
+        dateInput.value = savedDate || new Date().toISOString().slice(0,10);
+        dateInput.addEventListener('change', (e)=>{
+            localStorage.setItem('wheelDate', e.target.value);
+        });
+
+        function initInputs() {
+            inputContainer.innerHTML = '';
+            categories.forEach((cat, i) => {
+                const div = document.createElement('div');
+                div.className = 'input-group';
+                div.style.display = 'grid';
+                div.style.gridTemplateColumns = '1fr 80px 80px';
+                div.style.alignItems = 'center';
+                div.innerHTML = `
+                    <label style="border-left: 4px solid ${cat.color}; padding-left: 10px;">${cat.name}</label>
+                    <input type="number" title="Hiện tại" value="${currentScores[i]}" min="1" max="10" onchange="updateScore(${i}, 'current', this.value)">
+                    <input type="number" title="Kỳ vọng" value="${futureScores[i]}" min="1" max="10" onchange="updateScore(${i}, 'future', this.value)">
+                `;
+                inputContainer.appendChild(div);
+            });
+        }
+
+        function updateScore(index, which, value) {
+            const v = Math.max(1, Math.min(10, parseInt(value)||1));
+            if(which === 'current') {
+                currentScores[index] = v;
+                localStorage.setItem('wheelCurrent', JSON.stringify(currentScores));
+            } else {
+                futureScores[index] = v;
+                localStorage.setItem('wheelFuture', JSON.stringify(futureScores));
+            }
+            drawAll();
+        }
+
+        function resetData() {
+            if(!confirm("Bạn có chắc chắn muốn đặt lại tất cả chỉ số về 5?")) return;
+            currentScores = [5,5,5,5,5,5,5,5];
+            futureScores = [5,5,5,5,5,5,5,5];
+            localStorage.setItem('wheelCurrent', JSON.stringify(currentScores));
+            localStorage.setItem('wheelFuture', JSON.stringify(futureScores));
+            initInputs();
+            drawAll();
+        }
+
+        function drawSingleWheel(canvasEl, scores, fillColor, strokeColor) {
+            const ctx = canvasEl.getContext('2d');
+            const cx = canvasEl.width / 2;
+            const cy = canvasEl.height / 2;
+            const radius = Math.min(canvasEl.width, canvasEl.height) * 0.4; // responsive
+            const step = radius / 10;
+
+            ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
+
+            // Grid
+            ctx.strokeStyle = '#eee';
+            ctx.lineWidth = 1;
+            for(let i=1;i<=10;i++){
+                ctx.beginPath();
+                ctx.arc(cx, cy, step * i, 0, Math.PI*2);
+                ctx.stroke();
+            }
+
+            const angleStep = (Math.PI*2) / categories.length;
+
+            // polygon
+            ctx.beginPath();
+            categories.forEach((cat,i)=>{
+                const angle = i*angleStep - Math.PI/2;
+                const r = scores[i]*step;
+                const x = cx + r*Math.cos(angle);
+                const y = cy + r*Math.sin(angle);
+                if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+            });
+            ctx.closePath();
+            ctx.fillStyle = fillColor;
+            ctx.fill();
+            ctx.strokeStyle = strokeColor;
+            ctx.lineWidth = 3;
+            ctx.stroke();
+
+            // spokes, labels, points
+            categories.forEach((cat,i)=>{
+                const angle = i*angleStep - Math.PI/2;
+
+                // spoke
+                ctx.beginPath();
+                ctx.strokeStyle = '#ddd';
+                ctx.lineWidth = 1;
+                ctx.moveTo(cx, cy);
+                ctx.lineTo(cx + radius*Math.cos(angle), cy + radius*Math.sin(angle));
+                ctx.stroke();
+
+                // label (tangent to circle)
+                const lx = cx + (radius + 36) * Math.cos(angle);
+                const ly = cy + (radius + 20) * Math.sin(angle);
+                ctx.save();
+                ctx.translate(lx, ly);
+                let rot = angle + Math.PI/2;
+                if(rot > Math.PI/2 && rot < 3*Math.PI/2) rot += Math.PI;
+                ctx.rotate(rot);
+                ctx.font = 'bold 12px Arial';
+                ctx.fillStyle = '#34495e';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(cat.name.toUpperCase(), 0, 0);
+                ctx.restore();
+
+                // data point
+                const rx = cx + (scores[i]*step) * Math.cos(angle);
+                const ry = cy + (scores[i]*step) * Math.sin(angle);
+                ctx.beginPath();
+                ctx.arc(rx, ry, 5, 0, Math.PI*2);
+                ctx.fillStyle = cat.color;
+                ctx.fill();
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+            });
+        }
+
+        function drawAll(){
+            drawSingleWheel(canvasCurrent, currentScores, 'rgba(46,204,113,0.18)', '#27ae60');
+            drawSingleWheel(canvasFuture, futureScores, 'rgba(52,152,219,0.16)', '#2980b9');
+        }
+
+        function downloadCanvas(which){
+            const link = document.createElement('a');
+            const date = dateInput.value || new Date().toISOString().slice(0,10);
+            let el = (which === 'future') ? canvasFuture : canvasCurrent;
+            link.download = `BanhXeCuocDoi_${which}_${date}.png`;
+            link.href = el.toDataURL();
+            link.click();
+        }
+
+        initInputs();
+        drawAll();
+    </script>
+</body>
+</html>
